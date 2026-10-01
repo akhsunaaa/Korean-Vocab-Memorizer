@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Korean Drill — TOPIK vocab</title>
+<style>
+  :root { color-scheme: light dark; --line: rgba(128,128,128,.35); --bg2: rgba(128,128,128,.07); }
+  * { box-sizing: border-box; }
+  body { font-family: system-ui, -apple-system, "Segoe UI", "Noto Sans KR", sans-serif;
+         max-width: 820px; margin: 0 auto; padding: 20px 16px 80px; line-height: 1.5; }
+  h1 { font-size: 1.35rem; margin: 0 0 2px; }
+  .sub { opacity: .6; font-size: .88rem; margin-bottom: 18px; }
+  .card { border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 14px; }
+  .card h2 { font-size: .78rem; text-transform: uppercase; letter-spacing: .05em;
+             opacity: .6; margin: 0 0 12px; font-weight: 700; }
+  label { display: block; font-size: .74rem; opacity: .7; margin-bottom: 4px;
+          text-transform: uppercase; letter-spacing: .04em; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .row > div { flex: 1 1 110px; }
+  input, select, textarea {
+    width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line);
+    background: transparent; color: inherit; font: inherit; font-size: .92rem;
+  }
+  textarea { min-height: 170px; resize: vertical; font-size: .84rem;
+             font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .check { display: flex; align-items: center; gap: 8px; font-size: .88rem; margin-top: 10px; }
+  .check input { width: auto; }
+  button { padding: 9px 16px; border-radius: 8px; border: 1px solid transparent;
+           background: #3b82f6; color: #fff; font: inherit; font-weight: 600;
+           cursor: pointer; font-size: .9rem; }
+  button.ghost { background: transparent; color: inherit; border-color: var(--line); }
+  button.tiny { padding: 5px 10px; font-size: .8rem; }
+  button:disabled { opacity: .4; cursor: default; }
+  #stage { text-align: center; padding: 20px 10px 8px; }
+  #ko { font-size: 2.7rem; font-weight: 700; line-height: 1.15; word-break: keep-all;
+        min-height: 1.2em; }
+  #en { opacity: .65; min-height: 1.4em; margin-top: 2px; transition: opacity .15s; }
+  #en.hidden { opacity: 0; }
+  #meta { font-size: .78rem; opacity: .55; margin-top: 10px; font-variant-numeric: tabular-nums; }
+  .bar { height: 4px; background: var(--bg2); border-radius: 99px; overflow: hidden; margin-top: 14px; }
+  .bar > i { display: block; height: 100%; background: #3b82f6; width: 0; transition: width .25s; }
+  .hint { font-size: .78rem; opacity: .55; margin-top: 8px; }
+  .drop { border: 2px dashed var(--line); border-radius: 12px; padding: 26px 16px;
+          text-align: center; font-size: .9rem; opacity: .8; cursor: pointer; }
+  .drop.over { border-color: #3b82f6; background: var(--bg2); opacity: 1; }
+  .split { display: flex; gap: 8px; align-items: flex-end; margin-bottom: 10px; }
+  .split > div:first-child { flex: 1; }
+  .rowbtns { display: flex; gap: 6px; flex-wrap: wrap; }
+  .err { color: #e5534b; font-size: .85rem; margin-top: 8px; }
+  .prog { font-size: .78rem; opacity: .65; margin-top: 6px; font-variant-numeric: tabular-nums;
+          line-height: 1.6; }
+  .plan-line { font-weight: 600; opacity: 1; color: #3b82f6; }
+  .preview { background: var(--bg2); border-radius: 8px; padding: 10px 12px;
+             font-size: .82rem; line-height: 1.7; margin-bottom: 12px;
+             font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+             max-height: 160px; overflow: auto; }
+  .preview b { color: #3b82f6; font-weight: 700; }
+  .preview .sep { opacity: .35; margin: 0 6px; }
+  .preview.raw { white-space: pre-wrap; word-break: break-word; }
+  details.debug { margin-top: 10px; font-size: .8rem; opacity: .8; }
+  details.debug summary { cursor: pointer; opacity: .7; }
+  details.debug pre { max-height: 260px; overflow: auto; background: var(--bg2);
+                      padding: 10px; border-radius: 8px; margin-top: 8px;
+                      font-size: .78rem; white-space: pre-wrap; word-break: break-word; }
+</style>
+</head>
+<body>
+
+<h1>Korean Drill</h1>
+<p class="sub">TOPIK vocab from your PDFs — everything stays in your browser.</p>
+
+<!-- PLAYER -->
+<div class="card">
+  <div id="stage">
+    <div id="ko">준비</div>
+    <div id="en">ready</div>
+    <div id="meta">0 / 0</div>
+    <div class="bar"><i id="bar"></i></div>
+  </div>
+  <div class="row" style="margin-top:14px; justify-content:center">
+    <button id="play">▶ Start session</button>
+    <button id="test3" class="ghost">Test first 3</button>
+    <button id="stop" class="ghost" disabled>■ Stop</button>
+    <button id="reset" class="ghost tiny">↺ Reset position</button>
+  </div>
+  <p class="hint" id="voiceHint"></p>
+</div>
+
+<!-- STUDY PLAN -->
+<div class="card">
+  <h2>Study plan</h2>
+  <div class="row">
+    <div>
+      <label for="targetDate">Target finish date</label>
+      <input id="targetDate" type="date">
+    </div>
+    <div style="flex:0 0 auto">
+      <label>&nbsp;</label>
+      <button id="applyPlan" class="ghost">Apply to session</button>
+    </div>
+  </div>
+  <div id="planStats" class="prog"></div>
+</div>
+
+<!-- SETTINGS -->
+<div class="card">
+  <h2>Session settings</h2>
+  <div class="row">
+    <div><label for="wordsPerSession">Words per session</label>
+         <input id="wordsPerSession" type="number" min="0" step="1"></div>
+    <div><label for="sessionMinutes">Session length (min)</label>
+         <input id="sessionMinutes" type="number" min="0" step="1"></div>
+    <div><label for="repeats">Repeats each</label>
+         <input id="repeats" type="number" min="1" max="6" step="1"></div>
+  </div>
+  <div class="row" style="margin-top:12px">
+    <div><label for="gap">Pause to repeat (sec)</label>
+         <input id="gap" type="number" min="0" max="15" step="0.5"></div>
+    <div><label for="between">Pause between words (sec)</label>
+         <input id="between" type="number" min="0" max="15" step="0.5"></div>
+    <div><label for="rate">Speaking speed</label>
+         <input id="rate" type="number" min="0.5" max="1.5" step="0.05"></div>
+  </div>
+  <div class="row" style="margin-top:12px">
+    <div><label for="voice">Korean voice</label><select id="voice"></select></div>
+    <div><label for="englishPos">English placement</label>
+      <select id="englishPos">
+        <option value="after">After all Korean repeats</option>
+        <option value="each">After each Korean</option>
+        <option value="before">Before the Korean</option>
+        <option value="never">Never (Korean only)</option>
+      </select>
+    </div>
+  </div>
+  <label class="check"><input id="recallMode" type="checkbox"> Recall mode — hide English until it is spoken</label>
+  <label class="check"><input id="loopBank" type="checkbox"> Loop back to the start at the end of the deck</label>
+  <p class="hint">Set either session limit to <code>0</code> to disable it. Both apply — whichever hits first ends the session.</p>
+</div>
+
+<!-- LIBRARY -->
+<div class="card">
+  <h2>Your word banks</h2>
+  <div class="split">
+    <div>
+      <label for="bankSel">Active bank</label>
+      <select id="bankSel"></select>
+    </div>
+    <div class="rowbtns">
+      <button class="ghost tiny" id="renameBank">Rename</button>
+      <button class="ghost tiny" id="deleteBank">Delete</button>
+      <button class="ghost tiny" id="clearAll">Clear all data</button>
+    </div>
+  </div>
+  <div class="prog" id="bankProg"></div>
+
+  <div class="drop" id="drop" style="margin-top:12px">
+    📄 Drop a PDF here, or <u>click to choose</u><br>
+    <span style="font-size:.82rem;opacity:.7">Text-based PDFs only (not scans)</span>
+  </div>
+  <input type="file" id="file" accept="application/pdf" style="display:none" multiple>
+  <p class="hint" id="pdfStatus"></p>
+
+  <details class="debug" id="debugWrap" hidden>
+    <summary>Raw PDF text (debug)</summary>
+    <pre id="debugText"></pre>
+  </details>
+
+  <div class="row" style="margin-top:14px">
+    <button class="ghost tiny" id="exportAll">Export all banks (.json)</button>
+    <button class="ghost tiny" id="importBtn">Import .json</button>
+    <input type="file" id="importFile" accept="application/json" style="display:none">
+  </div>
+</div>
+
+<!-- EDITOR -->
+<div class="card">
+  <h2>Parsed word list</h2>
+  <div class="preview" id="preview">Load a bank to see the parse.</div>
+  <textarea id="words" spellcheck="false"></textarea>
+  <div class="row" style="margin-top:10px">
+    <button id="saveWords">Save list</button>
+    <button class="ghost" id="revertWords">Revert</button>
+    <span class="hint" id="wordCount" style="align-self:center;margin-left:auto"></span>
+  </div>
+  <p class="err" id="editorErr"></p>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+(() => {
+  "use strict";
+
+  /* =========================================================
+     Storage  (v5 — older versions discarded)
+     ========================================================= */
+  const K_SET = "kdrill.settings.v5";
+  const K_BANK = "kdrill.banks.v5";
+  const K_PROG = "kdrill.progress.v5";
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }
+                catch { return d; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; }
+                catch { return false; } }
+  };
+  const DEFAULT_SETTINGS = {
+    bankId: null, voiceName: "",
+    wordsPerSession: 56, sessionMinutes: 20, repeats: 2,
+    gap: 2, between: 1, rate: 0.9,
+    englishPos: "after", recallMode: true, loopBank: false,
+    targetDate: ""
+  };
+  let settings = Object.assign({}, DEFAULT_SETTINGS, store.get(K_SET, {}));
+  let banks    = store.get(K_BANK, []);
+  let progress = store.get(K_PROG, {});
+  const saveSettings = () => store.set(K_SET, settings);
+  const saveBanks    = () => store.set(K_BANK, banks);
+  const saveProgress = () => store.set(K_PROG, progress);
+  const $ = id => document.getElementById(id);
+  const activeBank = () => banks.find(b => b.id === settings.bankId) || null;
+
+  /* =========================================================
+     Speech
+     ========================================================= */
+  const synth = window.speechSynthesis;
+  let koVoices = [], cancelled = false, running = false;
+
+  function refreshVoices() {
+    koVoices = synth.getVoices().filter(v => v.lang.toLowerCase().startsWith("ko"));
+    const sel = $("voice"), prev = settings.voiceName || sel.value;
+    sel.innerHTML = "";
+    if (!koVoices.length) {
+      sel.innerHTML = '<option value="">(none found)</option>';
+      $("voiceHint").textContent = "No Korean voice on this device. Chrome or Edge desktop is best.";
+      return;
+    }
+    koVoices.forEach(v => {
+      const o = document.createElement("option");
+      o.value = v.name;
+      o.textContent = v.name + " · " + v.lang + (v.localService ? "" : " · online");
+      sel.appendChild(o);
+    });
+    const pick = koVoices.find(v => v.name === prev)
+              || koVoices.find(v => /google|heami|yuna/i.test(v.name)) || koVoices[0];
+    sel.value = pick.name;
+    settings.voiceName = pick.name;
+    $("voiceHint").textContent = koVoices.length + " Korean voice(s) available.";
+  }
+
+  // Speak one utterance and wait. Enforces a MINIMUM duration so a premature
+  // onend (common on Windows voices) can't let the next utterance queue on
+  // top of audio that is still playing.
+  function speak(text, lang, rate) {
+    return new Promise(resolve => {
+      if (!text || !text.trim()) return resolve();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = lang;
+      u.rate = rate;
+      if (lang.startsWith("ko")) {
+        const v = koVoices.find(x => x.name === settings.voiceName);
+        if (v) u.voice = v;
+      }
+      const minMs = Math.max(350, Math.round(text.length * 110 / Math.max(rate, 0.5)));
+      const t0 = performance.now();
+      let settled = false;
+      const settle = () => {
+        if (settled) return;
+        settled = true;
+        const elapsed = performance.now() - t0;
+        const wait = Math.max(0, minMs - elapsed);
+        if (wait > 0) setTimeout(resolve, wait);
+        else resolve();
+      };
+      u.onend = settle;
+      u.onerror = settle;
+      setTimeout(settle, minMs + 12000);
+      synth.speak(u);
+    });
+  }
+
+  async function sleep(ms) {
+    let left = ms;
+    while (left > 0) {
+      if (cancelled) return;
+      const d = Math.min(80, left);
+      await new Promise(r => setTimeout(r, d));
+      left -= d;
+    }
+  }
+
+  /* =========================================================
+     PDF → text → entries
+     ---------------------------------------------------------
+     CRITICAL: sort EACH PAGE separately. Each page has its own
+     coordinate system, and different pages can have items with
+     identical y-values. Pooling across pages scrambles output.
+     ========================================================= */
+  if (window.pdfjsLib) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+  }
+
+  async function pdfToText(file) {
+    const buf = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+    const pagesText = [];
+
+    for (let p = 1; p <= pdf.numPages; p++) {
+      const page = await pdf.getPage(p);
+      const tc = await page.getTextContent();
+      const items = [];
+      for (const it of tc.items) {
+        if (!it.str || !it.str.trim()) continue;
+        items.push({ str: it.str, x: it.transform[4], y: it.transform[5] });
+      }
+      if (!items.length) continue;
+
+      // Sort top→bottom
+      items.sort((a, b) => b.y - a.y);
+
+      // Bucket into visual rows (items whose y differs by ≤ 3 units).
+      const rows = [];
+      let cur = null;
+      for (const it of items) {
+        if (!cur || Math.abs(it.y - cur.y) > 3) {
+          cur = { y: it.y, items: [it] };
+          rows.push(cur);
+        } else {
+          cur.items.push(it);
+        }
+      }
+
+      // Within each row, order left→right.
+      for (const r of rows) r.items.sort((a, b) => a.x - b.x);
+
+      // Join fragments with "" (pdf.js bakes trailing spaces into str).
+      const pageText = rows.map(r => r.items.map(i => i.str).join("")).join(" ");
+      pagesText.push(pageText);
+    }
+
+    // Join pages, then repair missing spaces at script boundaries.
+    let text = pagesText.join(" ");
+    text = text
+      .replace(/(\d)([가-힣])/g, "$1 $2")
+      .replace(/([가-힣])(\d)/g, "$1 $2")
+      .replace(/([가-힣])([A-Za-z])/g, "$1 $2")
+      .replace(/([A-Za-z])([가-힣])/g, "$1 $2")
+      .replace(/([A-Za-z])(\d)/g, "$1 $2")
+      .replace(/(\d)([A-Za-z])/g, "$1 $2")
+      .replace(/\s+/g, " ")
+      .trim();
+    return text;
+  }
+
+  // Every entry is "NUMBER KOREAN ENGLISH"; the English ends at the next
+  // "NUMBER Korean" pair, so the split survives any order.
+  function extractEntries(text) {
+    const re = /(\d{1,4})\s+([가-힣]+)\s*([\s\S]*?)(?=\s+\d{1,4}\s+[가-힣]|$)/g;
+    const raw = [];
+    let m;
+    while ((m = re.exec(text)) !== null) {
+      const num = parseInt(m[1], 10);
+      if (num < 1 || num > 5000) continue;
+      const ko = m[2].trim();
+      const en = m[3].replace(/\s+/g, " ").trim();
+      raw.push({ num, ko, en });
+    }
+    raw.sort((a, b) => a.num - b.num);
+    const seen = new Set(), out = [];
+    for (const e of raw) {
+      if (seen.has(e.num)) continue;
+      seen.add(e.num);
+      out.push({ ko: e.ko, en: e.en });
+    }
+    return out;
+  }
+
+  function dedupe(words) {
+    const seen = new Set(), out = [];
+    for (const w of words) {
+      const k = w.ko.replace(/\s+/g, "");
+      if (seen.has(k)) continue;
+      seen.add(k); out.push(w);
+    }
+    return out;
+  }
+
+  async function ingestPdf(file) {
+    $("pdfStatus").textContent = "Reading " + file.name + " …";
+    try {
+      const text = await pdfToText(file);
+      $("debugText").textContent = text.slice(0, 20000) +
+        (text.length > 20000 ? "\n…(truncated)" : "");
+      $("debugWrap").hidden = false;
+
+      const words = extractEntries(text);
+      if (!words.length) {
+        $("pdfStatus").textContent = "No Korean entries found in " + file.name +
+          ". Check the raw text debug panel below.";
+        return;
+      }
+      const bank = {
+        id: "b" + Date.now().toString(36),
+        name: file.name.replace(/\.pdf$/i, "").slice(0, 60),
+        words, createdAt: Date.now()
+      };
+      banks.push(bank);
+      settings.bankId = bank.id;
+      saveBanks(); saveSettings();
+      renderAll();
+      $("pdfStatus").textContent = "Added “" + bank.name + "” — " + words.length +
+        " entries. Check the preview above the textarea.";
+    } catch (e) {
+      $("pdfStatus").textContent = "Could not read that PDF: " + e.message;
+    }
+  }
+
+  /* =========================================================
+     Session runner
+     ========================================================= */
+  let timerHandle = null;
+  function setRunning(on) {
+    running = on;
+    $("play").disabled = on;
+    $("test3").disabled = on;
+    $("stop").disabled = !on;
+  }
+  function renderWord(ko, en, posText, pct, hideEn) {
+    $("ko").textContent = ko;
+    $("en").textContent = en;
+    $("en").classList.toggle("hidden", !!hideEn);
+    $("meta").textContent = posText;
+    $("bar").style.width = pct + "%";
+  }
+
+  async function runSession(limitOverride) {
+    if (running) return;
+    const bank = activeBank();
+    if (!bank || !bank.words.length) { alert("Pick or create a bank first."); return; }
+
+    const words   = bank.words;
+    const repeats = Math.max(1, +settings.repeats || 1);
+    const gap     = Math.max(0, +settings.gap || 0) * 1000;
+    const between = Math.max(0, +settings.between || 0) * 1000;
+    const rate    = Math.min(1.5, Math.max(0.5, +settings.rate || 0.9));
+    const perSess = limitOverride != null
+      ? Math.max(1, limitOverride)
+      : Math.max(0, +settings.wordsPerSession || 0);
+    const maxMs   = limitOverride != null
+      ? 0
+      : Math.max(0, +settings.sessionMinutes || 0) * 60000;
+    const { englishPos, recallMode, loopBank: loop } = settings;
+
+    synth.cancel();
+    cancelled = false;
+    await new Promise(r => setTimeout(r, 250));
+    setRunning(true);
+
+    const t0 = Date.now();
+    let idx  = limitOverride != null ? 0 : (progress[bank.id] || 0) % words.length;
+    let done = 0, hitEnd = false;
+
+    if (timerHandle) clearInterval(timerHandle);
+    timerHandle = setInterval(() => {
+      const el = Math.floor((Date.now() - t0) / 1000);
+      $("meta").textContent = ($("meta").dataset.base || "") +
+        "  ·  " + Math.floor(el / 60) + ":" + String(el % 60).padStart(2, "0");
+    }, 500);
+
+    while (!cancelled) {
+      if (perSess > 0 && done >= perSess) break;
+      if (maxMs > 0 && Date.now() - t0 >= maxMs) break;
+
+      const w = words[idx];
+      const base = (idx + 1) + " / " + words.length +
+                   (perSess > 0 ? "   ·   " + (done + 1) + "/" + perSess : "");
+      $("meta").dataset.base = base;
+      renderWord(w.ko, w.en, base,
+                 (done / (perSess || words.length)) * 100, recallMode);
+
+      if (englishPos === "before" && w.en) {
+        $("en").classList.remove("hidden");
+        await speak(w.en, "en-US", 1);
+        await sleep(500);
+      }
+
+      if (englishPos === "each") {
+        for (let r = 0; r < repeats && !cancelled; r++) {
+          await speak(w.ko, "ko-KR", rate);
+          await sleep(gap);
+          if (w.en) {
+            $("en").classList.remove("hidden");
+            await speak(w.en, "en-US", 1);
+            await sleep(400);
+          }
+        }
+      } else {
+        for (let r = 0; r < repeats && !cancelled; r++) {
+          await speak(w.ko, "ko-KR", rate);
+          await sleep(gap);
+        }
+        if (englishPos === "after" && w.en) {
+          $("en").classList.remove("hidden");
+          await speak(w.en, "en-US", 1);
+          await sleep(300);
+        } else if (englishPos === "never") {
+          $("en").classList.remove("hidden");
+        }
+      }
+      if (cancelled) break;
+
+      await sleep(between);
+
+      idx++; done++;
+      if (idx >= words.length) {
+        if (!loop) { hitEnd = true; idx = words.length; break; }
+        idx = 0;
+      }
+      if (limitOverride == null) { progress[bank.id] = idx; saveProgress(); }
+    }
+
+    if (limitOverride == null && !cancelled) progress[bank.id] = idx;
+    if (limitOverride == null) saveProgress();
+
+    clearInterval(timerHandle); timerHandle = null;
+    setRunning(false);
+    if (limitOverride == null) { renderBankProgress(); renderPlan(); }
+
+    $("bar").style.width = "100%";
+    $("ko").textContent = cancelled ? "멈춤" : (hitEnd ? "끝" : "수고했어요");
+    $("en").classList.remove("hidden");
+    $("en").textContent = cancelled ? "stopped" : "session complete";
+    $("meta").textContent = done + " word" + (done === 1 ? "" : "s") + " drilled";
+  }
+
+  function stopSession() {
+    cancelled = true; synth.cancel();
+    if (timerHandle) { clearInterval(timerHandle); timerHandle = null; }
+    setRunning(false);
+  }
+
+  /* =========================================================
+     Rendering
+     ========================================================= */
+  const escapeHtml = s => String(s).replace(/[&<>"']/g,
+    c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+  function renderBankSelect() {
+    const sel = $("bankSel"); sel.innerHTML = "";
+    if (!banks.length) { sel.innerHTML = '<option value="">— no banks yet —</option>'; return; }
+    banks.forEach(b => {
+      const o = document.createElement("option");
+      o.value = b.id;
+      o.textContent = b.name + "  (" + b.words.length + ")";
+      sel.appendChild(o);
+    });
+    if (!banks.some(b => b.id === settings.bankId)) settings.bankId = banks[0].id;
+    sel.value = settings.bankId;
+  }
+
+  function renderBankProgress() {
+    const bank = activeBank(), el = $("bankProg");
+    if (!bank) { el.textContent = ""; return; }
+    const pos = (progress[bank.id] || 0) % bank.words.length;
+    el.textContent = "Position: " + pos + " / " + bank.words.length +
+      "  (" + Math.round(pos / bank.words.length * 100) + "% through this pass)";
+  }
+
+  function renderPreview() {
+    const bank = activeBank(), el = $("preview");
+    el.classList.remove("raw");
+    if (!bank || !bank.words.length) {
+      el.textContent = "Load a bank to see the parse.";
+      return;
+    }
+    const head = bank.words.slice(0, 12).map((w, i) =>
+      '<b>' + (i + 1) + '</b> ' + escapeHtml(w.ko) +
+      '<span class="sep">—</span>' + escapeHtml(w.en || "(no meaning)")
+    ).join("<br>");
+    el.innerHTML = "<div style='opacity:.7;margin-bottom:6px'>" +
+      bank.words.length + " entries parsed · first 12 shown</div>" + head;
+  }
+
+  function renderPlan() {
+    const bank = activeBank(), el = $("planStats");
+    if (!bank) { el.textContent = "Load a bank to see your plan."; return; }
+    const total = bank.words.length;
+    const pos   = progress[bank.id] || 0;
+    const remaining = Math.max(0, total - pos);
+    const lines = ["Bank: " + total + " words · " + pos + " done · " +
+                   remaining + " remaining this pass"];
+    const td = $("targetDate").value;
+    if (td) {
+      const today = new Date(); today.setHours(0,0,0,0);
+      const days = Math.max(1, Math.round((new Date(td + "T00:00:00") - today) / 86400000));
+      const perDay = remaining > 0 ? Math.ceil(remaining / days) : 0;
+      lines.push('<span class="plan-line">' + days + " day(s) left → " +
+                 perDay + " new words / day to finish on time</span>");
+      if (remaining === 0) lines.push("First pass complete — you're ahead.");
+    } else {
+      lines.push("Set a target date to compute your daily load.");
+    }
+    el.innerHTML = lines.join("<br>");
+  }
+
+  function loadEditor() {
+    const bank = activeBank();
+    $("words").value = bank
+      ? bank.words.map(w => w.en ? w.ko + " - " + w.en : w.ko).join("\n")
+      : "";
+    updateWordCount();
+  }
+  function updateWordCount() {
+    const n = $("words").value.split("\n").filter(l => l.trim()).length;
+    $("wordCount").textContent = n + " line" + (n === 1 ? "" : "s");
+  }
+
+  function renderSettings() {
+    $("wordsPerSession").value = settings.wordsPerSession;
+    $("sessionMinutes").value  = settings.sessionMinutes;
+    $("repeats").value         = settings.repeats;
+    $("gap").value             = settings.gap;
+    $("between").value         = settings.between;
+    $("rate").value            = settings.rate;
+    $("englishPos").value      = settings.englishPos;
+    $("recallMode").checked    = settings.recallMode;
+    $("loopBank").checked      = settings.loopBank;
+    $("targetDate").value      = settings.targetDate || "";
+  }
+  function renderAll() {
+    renderBankSelect(); renderBankProgress(); renderPreview();
+    renderPlan(); renderSettings(); loadEditor();
+  }
+
+  /* =========================================================
+     Settings wiring
+     ========================================================= */
+  const bindNum = (id, key, min, max) => {
+    $(id).addEventListener("input", e => {
+      let v = parseFloat(e.target.value);
+      if (isNaN(v)) return;
+      if (min !== undefined) v = Math.max(min, v);
+      if (max !== undefined) v = Math.min(max, v);
+      settings[key] = v; saveSettings();
+    });
+  };
+  bindNum("wordsPerSession", "wordsPerSession", 0);
+  bindNum("sessionMinutes",  "sessionMinutes",  0);
+  bindNum("repeats",         "repeats",         1, 6);
+  bindNum("gap",             "gap",             0, 15);
+  bindNum("between",         "between",         0, 15);
+  bindNum("rate",            "rate",            0.5, 1.5);
+
+  ["recallMode","loopBank"].forEach(id => {
+    $(id).addEventListener("change", e => {
+      settings[id] = e.target.checked; saveSettings();
+    });
+  });
+  $("englishPos").addEventListener("change", e => {
+    settings.englishPos = e.target.value; saveSettings();
+  });
+  $("voice").addEventListener("change", e => {
+    settings.voiceName = e.target.value; saveSettings();
+  });
+  $("targetDate").addEventListener("change", e => {
+    settings.targetDate = e.target.value; saveSettings(); renderPlan();
+  });
+  $("applyPlan").addEventListener("click", () => {
+    const td = $("targetDate").value;
+    const bank = activeBank();
+    if (!td || !bank) { alert("Pick a target date and a bank first."); return; }
+    const today = new Date(); today.setHours(0,0,0,0);
+    const days = Math.max(1, Math.round((new Date(td + "T00:00:00") - today) / 86400000));
+    const remaining = Math.max(0, bank.words.length - (progress[bank.id] || 0));
+    settings.wordsPerSession = Math.max(1, Math.ceil(remaining / days));
+    saveSettings(); renderSettings();
+  });
+
+  /* =========================================================
+     Bank management
+     ========================================================= */
+  $("bankSel").addEventListener("change", e => {
+    settings.bankId = e.target.value; saveSettings();
+    renderBankProgress(); renderPreview(); renderPlan(); loadEditor();
+  });
+  $("renameBank").addEventListener("click", () => {
+    const bank = activeBank(); if (!bank) return;
+    const name = prompt("Name for this bank:", bank.name);
+    if (!name) return;
+    bank.name = name.slice(0, 80); saveBanks(); renderBankSelect();
+  });
+  $("deleteBank").addEventListener("click", () => {
+    const bank = activeBank(); if (!bank) return;
+    if (!confirm('Delete "' + bank.name + '"? This cannot be undone.')) return;
+    banks = banks.filter(b => b.id !== bank.id);
+    delete progress[bank.id];
+    settings.bankId = banks.length ? banks[0].id : null;
+    saveBanks(); saveProgress(); saveSettings(); renderAll();
+  });
+  $("clearAll").addEventListener("click", () => {
+    if (!confirm("Wipe ALL banks and settings from this browser?")) return;
+    banks = []; progress = {}; settings = Object.assign({}, DEFAULT_SETTINGS);
+    saveBanks(); saveProgress(); saveSettings(); renderAll();
+    $("debugWrap").hidden = true;
+    $("pdfStatus").textContent = "All data cleared.";
+  });
+  $("reset").addEventListener("click", () => {
+    const bank = activeBank(); if (!bank) return;
+    progress[bank.id] = 0; saveProgress();
+    renderBankProgress(); renderPlan();
+  });
+  $("saveWords").addEventListener("click", () => {
+    const bank = activeBank();
+    if (!bank) { $("editorErr").textContent = "No bank selected."; return; }
+    const words = dedupe($("words").value.split("\n").map(l => l.trim()).filter(Boolean)
+      .map(l => {
+        const parts = l.split(/\t|\||\s+[-–—]\s+/);
+        return { ko: (parts[0] || "").trim(), en: parts.slice(1).join(" ").trim() };
+      }).filter(w => w.ko));
+    if (!words.length) { $("editorErr").textContent = "List is empty."; return; }
+    bank.words = words;
+    if (!saveBanks()) { $("editorErr").textContent = "Browser storage is full."; return; }
+    $("editorErr").textContent = "";
+    renderBankSelect(); renderBankProgress(); renderPreview(); renderPlan(); updateWordCount();
+  });
+  $("revertWords").addEventListener("click", () => {
+    $("editorErr").textContent = ""; loadEditor();
+  });
+  $("words").addEventListener("input", updateWordCount);
+
+  /* =========================================================
+     PDF input
+     ========================================================= */
+  const drop = $("drop"), fileInput = $("file");
+  drop.addEventListener("click", () => fileInput.click());
+  drop.addEventListener("dragover", e => { e.preventDefault(); drop.classList.add("over"); });
+  drop.addEventListener("dragleave", () => drop.classList.remove("over"));
+  drop.addEventListener("drop", e => {
+    e.preventDefault(); drop.classList.remove("over"); handleFiles(e.dataTransfer.files);
+  });
+  fileInput.addEventListener("change", e => handleFiles(e.target.files));
+  async function handleFiles(files) {
+    for (const f of files) if (/\.pdf$/i.test(f.name)) await ingestPdf(f);
+    fileInput.value = "";
+  }
+
+  /* =========================================================
+     Export / import
+     ========================================================= */
+  $("exportAll").addEventListener("click", () => {
+    const blob = new Blob([JSON.stringify({ banks, progress, settings }, null, 2)],
+                          { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "korean-drill-banks.json"; a.click();
+    URL.revokeObjectURL(a.href);
+  });
+  $("importBtn").addEventListener("click", () => $("importFile").click());
+  $("importFile").addEventListener("change", async e => {
+    const f = e.target.files[0]; if (!f) return;
+    try {
+      const data = JSON.parse(await f.text());
+      const incoming = Array.isArray(data) ? data : (data.banks || []);
+      let added = 0;
+      for (const b of incoming) {
+        if (!b || !Array.isArray(b.words)) continue;
+        b.id = "b" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+        banks.push(b); added++;
+      }
+      if (data.progress) Object.assign(progress, data.progress);
+      if (data.settings) Object.assign(settings, data.settings);
+      saveBanks(); saveProgress(); saveSettings();
+      if (added && !settings.bankId) settings.bankId = banks[0].id;
+      saveSettings(); renderAll();
+      $("pdfStatus").textContent = "Imported " + added + " bank(s).";
+    } catch (err) {
+      $("pdfStatus").textContent = "Import failed: " + err.message;
+    }
+    e.target.value = "";
+  });
+
+  /* =========================================================
+     Boot
+     ========================================================= */
+  $("play").addEventListener("click", () => runSession());
+  $("test3").addEventListener("click", () => runSession(3));
+  $("stop").addEventListener("click", stopSession);
+  document.addEventListener("keydown", e => { if (e.key === "Escape" && running) stopSession(); });
+  window.addEventListener("pagehide", () => synth.cancel());
+
+  if (!window.speechSynthesis) {
+    document.body.insertAdjacentHTML("afterbegin",
+      '<p class="err">This browser has no speech synthesis. Use Chrome or Edge.</p>');
+  } else {
+    refreshVoices(); synth.onvoiceschanged = refreshVoices;
+  }
+  renderAll();
+})();
+</script>
+</body>
+</html>
