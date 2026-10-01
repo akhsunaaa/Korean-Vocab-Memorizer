@@ -57,12 +57,14 @@
              max-height: 160px; overflow: auto; }
   .preview b { color: #3b82f6; font-weight: 700; }
   .preview .sep { opacity: .35; margin: 0 6px; }
-  .preview.raw { white-space: pre-wrap; word-break: break-word; }
   details.debug { margin-top: 10px; font-size: .8rem; opacity: .8; }
   details.debug summary { cursor: pointer; opacity: .7; }
   details.debug pre { max-height: 260px; overflow: auto; background: var(--bg2);
                       padding: 10px; border-radius: 8px; margin-top: 8px;
                       font-size: .78rem; white-space: pre-wrap; word-break: break-word; }
+  .voice-row { display: flex; gap: 10px; align-items: flex-end; }
+  .voice-row > .voice-picker { flex: 1 1 auto; min-width: 0; }
+  .voice-row > .refresh-btn { flex: 0 0 auto; }
 </style>
 </head>
 <body>
@@ -103,6 +105,35 @@
   <div id="planStats" class="prog"></div>
 </div>
 
+<!-- VOICES -->
+<div class="card">
+  <h2>Voices</h2>
+  <div class="voice-row">
+    <div class="voice-picker">
+      <label for="voice">Korean voice — primary</label>
+      <select id="voice"></select>
+    </div>
+    <div class="voice-picker">
+      <label for="voice2">Korean voice — secondary</label>
+      <select id="voice2"></select>
+    </div>
+    <div class="refresh-btn">
+      <label>&nbsp;</label>
+      <button id="refreshVoices" class="ghost tiny" title="Re-scan for voices">↻ Refresh</button>
+    </div>
+  </div>
+  <label class="check"><input id="alternateVoices" type="checkbox">
+    Alternate voices on each repeat (needs both slots filled)</label>
+  <div class="voice-row" style="margin-top:12px">
+    <div class="voice-picker">
+      <label for="englishVoice">English voice (for meanings)</label>
+      <select id="englishVoice"></select>
+    </div>
+  </div>
+  <p class="hint" id="voiceHelp">Voices are provided by your operating system and browser.
+    Edge on Windows usually offers the most; Chrome offers fewer.</p>
+</div>
+
 <!-- SETTINGS -->
 <div class="card">
   <h2>Session settings</h2>
@@ -123,7 +154,6 @@
          <input id="rate" type="number" min="0.5" max="1.5" step="0.05"></div>
   </div>
   <div class="row" style="margin-top:12px">
-    <div><label for="voice">Korean voice</label><select id="voice"></select></div>
     <div><label for="englishPos">English placement</label>
       <select id="englishPos">
         <option value="after">After all Korean repeats</option>
@@ -192,7 +222,7 @@
   "use strict";
 
   /* =========================================================
-     Storage  (v5 — older versions discarded)
+     Storage  (v5 — additive keys only)
      ========================================================= */
   const K_SET = "kdrill.settings.v5";
   const K_BANK = "kdrill.banks.v5";
@@ -204,7 +234,11 @@
                 catch { return false; } }
   };
   const DEFAULT_SETTINGS = {
-    bankId: null, voiceName: "",
+    bankId: null,
+    voiceName: "",         // Korean primary
+    voiceName2: "",        // Korean secondary (empty = off)
+    englishVoiceName: "",  // English
+    alternateVoices: false,
     wordsPerSession: 56, sessionMinutes: 20, repeats: 2,
     gap: 2, between: 1, rate: 0.9,
     englishPos: "after", recallMode: true, loopBank: false,
@@ -220,46 +254,84 @@
   const activeBank = () => banks.find(b => b.id === settings.bankId) || null;
 
   /* =========================================================
-     Speech
+     Speech / voices
      ========================================================= */
   const synth = window.speechSynthesis;
-  let koVoices = [], cancelled = false, running = false;
+  let allVoices = [], koVoices = [], enVoices = [];
+  let cancelled = false, running = false;
 
-  function refreshVoices() {
-    koVoices = synth.getVoices().filter(v => v.lang.toLowerCase().startsWith("ko"));
-    const sel = $("voice"), prev = settings.voiceName || sel.value;
+  // Fill a <select> with voices; pick a sensible default.
+  function fillVoiceSelect(sel, voices, preferredName, prefRe, allowNone) {
+    const current = sel.value;
     sel.innerHTML = "";
-    if (!koVoices.length) {
-      sel.innerHTML = '<option value="">(none found)</option>';
-      $("voiceHint").textContent = "No Korean voice on this device. Chrome or Edge desktop is best.";
+
+    if (allowNone) {
+      const o = document.createElement("option");
+      o.value = "";
+      o.textContent = "— off (use primary) —";
+      sel.appendChild(o);
+    }
+    if (!voices.length) {
+      if (!allowNone) {
+        const o = document.createElement("option");
+        o.value = "";
+        o.textContent = "(none found)";
+        sel.appendChild(o);
+      }
       return;
     }
-    koVoices.forEach(v => {
+    voices.forEach(v => {
       const o = document.createElement("option");
       o.value = v.name;
       o.textContent = v.name + " · " + v.lang + (v.localService ? "" : " · online");
       sel.appendChild(o);
     });
-    const pick = koVoices.find(v => v.name === prev)
-              || koVoices.find(v => /google|heami|yuna/i.test(v.name)) || koVoices[0];
+
+    const want = preferredName || current;
+    let pick = voices.find(v => v.name === want);
+    if (!pick && prefRe) pick = voices.find(v => prefRe.test(v.name));
+    if (!pick) pick = voices[0];
     sel.value = pick.name;
-    settings.voiceName = pick.name;
-    $("voiceHint").textContent = koVoices.length + " Korean voice(s) available.";
+  }
+
+  function refreshVoices() {
+    allVoices = synth.getVoices() || [];
+    koVoices = allVoices.filter(v => v.lang.toLowerCase().startsWith("ko"));
+    enVoices = allVoices.filter(v => v.lang.toLowerCase().startsWith("en"));
+
+    fillVoiceSelect($("voice"),        koVoices, settings.voiceName,        /google|heami|yuna|seoyeon/i, false);
+    fillVoiceSelect($("voice2"),       koVoices, settings.voiceName2,       null,                         true);
+    fillVoiceSelect($("englishVoice"), enVoices, settings.englishVoiceName, /google|aria|jenny|zira|natural/i, false);
+
+    settings.voiceName        = $("voice").value;
+    settings.voiceName2       = $("voice2").value;
+    settings.englishVoiceName = $("englishVoice").value;
+    saveSettings();
+
+    $("voiceHint").textContent =
+      koVoices.length + " Korean · " + enVoices.length + " English voice(s) available." +
+      (koVoices.length < 2 ? "  Install more Korean voices in Windows settings, or use Edge, to enable alternating." : "");
   }
 
   // Speak one utterance and wait. Enforces a MINIMUM duration so a premature
   // onend (common on Windows voices) can't let the next utterance queue on
   // top of audio that is still playing.
-  function speak(text, lang, rate) {
+  function speak(text, lang, rate, explicitVoiceName) {
     return new Promise(resolve => {
       if (!text || !text.trim()) return resolve();
       const u = new SpeechSynthesisUtterance(text);
       u.lang = lang;
       u.rate = rate;
-      if (lang.startsWith("ko")) {
-        const v = koVoices.find(x => x.name === settings.voiceName);
+
+      let vName = explicitVoiceName;
+      if (!vName) {
+        vName = lang.startsWith("ko") ? settings.voiceName : settings.englishVoiceName;
+      }
+      if (vName) {
+        const v = allVoices.find(x => x.name === vName);
         if (v) u.voice = v;
       }
+
       const minMs = Math.max(350, Math.round(text.length * 110 / Math.max(rate, 0.5)));
       const t0 = performance.now();
       let settled = false;
@@ -288,12 +360,16 @@
     }
   }
 
+  // Which Korean voice to use for repeat r of a word.
+  function koreanVoiceForRepeat(r) {
+    if (settings.alternateVoices && settings.voiceName2) {
+      return (r % 2 === 0) ? settings.voiceName : settings.voiceName2;
+    }
+    return settings.voiceName;
+  }
+
   /* =========================================================
      PDF → text → entries
-     ---------------------------------------------------------
-     CRITICAL: sort EACH PAGE separately. Each page has its own
-     coordinate system, and different pages can have items with
-     identical y-values. Pooling across pages scrambles output.
      ========================================================= */
   if (window.pdfjsLib) {
     pdfjsLib.GlobalWorkerOptions.workerSrc =
@@ -315,10 +391,10 @@
       }
       if (!items.length) continue;
 
-      // Sort top→bottom
+      // Sort top→bottom for THIS page only.
       items.sort((a, b) => b.y - a.y);
 
-      // Bucket into visual rows (items whose y differs by ≤ 3 units).
+      // Bucket into visual rows (y within 3 units).
       const rows = [];
       let cur = null;
       for (const it of items) {
@@ -329,16 +405,13 @@
           cur.items.push(it);
         }
       }
-
-      // Within each row, order left→right.
+      // Left→right within each row.
       for (const r of rows) r.items.sort((a, b) => a.x - b.x);
 
-      // Join fragments with "" (pdf.js bakes trailing spaces into str).
       const pageText = rows.map(r => r.items.map(i => i.str).join("")).join(" ");
       pagesText.push(pageText);
     }
 
-    // Join pages, then repair missing spaces at script boundaries.
     let text = pagesText.join(" ");
     text = text
       .replace(/(\d)([가-힣])/g, "$1 $2")
@@ -352,8 +425,6 @@
     return text;
   }
 
-  // Every entry is "NUMBER KOREAN ENGLISH"; the English ends at the next
-  // "NUMBER Korean" pair, so the split survives any order.
   function extractEntries(text) {
     const re = /(\d{1,4})\s+([가-힣]+)\s*([\s\S]*?)(?=\s+\d{1,4}\s+[가-힣]|$)/g;
     const raw = [];
@@ -486,7 +557,7 @@
 
       if (englishPos === "each") {
         for (let r = 0; r < repeats && !cancelled; r++) {
-          await speak(w.ko, "ko-KR", rate);
+          await speak(w.ko, "ko-KR", rate, koreanVoiceForRepeat(r));
           await sleep(gap);
           if (w.en) {
             $("en").classList.remove("hidden");
@@ -496,7 +567,7 @@
         }
       } else {
         for (let r = 0; r < repeats && !cancelled; r++) {
-          await speak(w.ko, "ko-KR", rate);
+          await speak(w.ko, "ko-KR", rate, koreanVoiceForRepeat(r));
           await sleep(gap);
         }
         if (englishPos === "after" && w.en) {
@@ -568,7 +639,6 @@
 
   function renderPreview() {
     const bank = activeBank(), el = $("preview");
-    el.classList.remove("raw");
     if (!bank || !bank.words.length) {
       el.textContent = "Load a bank to see the parse.";
       return;
@@ -625,11 +695,13 @@
     $("englishPos").value      = settings.englishPos;
     $("recallMode").checked    = settings.recallMode;
     $("loopBank").checked      = settings.loopBank;
+    $("alternateVoices").checked = settings.alternateVoices;
     $("targetDate").value      = settings.targetDate || "";
   }
   function renderAll() {
     renderBankSelect(); renderBankProgress(); renderPreview();
     renderPlan(); renderSettings(); loadEditor();
+    refreshVoices();
   }
 
   /* =========================================================
@@ -651,7 +723,7 @@
   bindNum("between",         "between",         0, 15);
   bindNum("rate",            "rate",            0.5, 1.5);
 
-  ["recallMode","loopBank"].forEach(id => {
+  ["recallMode","loopBank","alternateVoices"].forEach(id => {
     $(id).addEventListener("change", e => {
       settings[id] = e.target.checked; saveSettings();
     });
@@ -662,6 +734,13 @@
   $("voice").addEventListener("change", e => {
     settings.voiceName = e.target.value; saveSettings();
   });
+  $("voice2").addEventListener("change", e => {
+    settings.voiceName2 = e.target.value; saveSettings();
+  });
+  $("englishVoice").addEventListener("change", e => {
+    settings.englishVoiceName = e.target.value; saveSettings();
+  });
+  $("refreshVoices").addEventListener("click", refreshVoices);
   $("targetDate").addEventListener("change", e => {
     settings.targetDate = e.target.value; saveSettings(); renderPlan();
   });
@@ -792,7 +871,8 @@
     document.body.insertAdjacentHTML("afterbegin",
       '<p class="err">This browser has no speech synthesis. Use Chrome or Edge.</p>');
   } else {
-    refreshVoices(); synth.onvoiceschanged = refreshVoices;
+    refreshVoices();
+    synth.onvoiceschanged = refreshVoices;
   }
   renderAll();
 })();
